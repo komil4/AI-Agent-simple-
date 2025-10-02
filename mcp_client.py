@@ -115,6 +115,9 @@ class MCPClient:
             
             return {"error": "Нет данных в SSE потоке"}
             
+        except Exception as e:
+            return {"error": f"Ошибка обработки SSE: {str(e)}"}
+    
     async def call_tool_fallback(self, tool_name: str, arguments: Optional[Dict[str, Any]] = None) -> Optional[Dict]:
         """Fallback метод для вызова инструмента без SSE (обычный HTTP)"""
         if not self.enabled:
