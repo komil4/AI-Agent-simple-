@@ -20,11 +20,15 @@ services:
     container_name: atlassian-mcp
     ports:
       - "3002:3000"
-    environment:
-      - ATLASSIAN_API_TOKEN=${ATLASSIAN_API_TOKEN}
-      - ATLASSIAN_EMAIL=${ATLASSIAN_EMAIL}
-      - JIRA_URL=${JIRA_URL}
-      - CONFLUENCE_URL=${CONFLUENCE_URL}
+      environment:
+        - JIRA_API_TOKEN=${JIRA_API_TOKEN}
+        - JIRA_PERSONAL_TOKEN=${JIRA_PERSONAL_TOKEN}
+        - JIRA_USERNAME=${JIRA_USERNAME}
+        - JIRA_URL=${JIRA_URL}
+        - CONFLUENCE_API_TOKEN=${CONFLUENCE_API_TOKEN}
+        - CONFLUENCE_USERNAME=${CONFLUENCE_USERNAME}
+        - CONFLUENCE_URL=${CONFLUENCE_URL}
+        - CONFLUENCE_PERSONAL_TOKEN=${CONFLUENCE_PERSONAL_TOKEN}
     restart: unless-stopped
     networks:
       - mcp-network
