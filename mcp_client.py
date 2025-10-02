@@ -13,6 +13,8 @@ class MCPClient:
         self.url = server_config.get("url", "http://localhost:3000")
         self.enabled = server_config.get("enabled", False)
         self.session_id = None
+        self.server_info = None
+        self._initialized = False
     
     async def is_available(self) -> bool:
         """Проверяет доступность MCP сервера"""
@@ -55,14 +57,25 @@ class MCPClient:
             return {"error": f"Ошибка подключения к {self.name}: {str(e)}"}
 
     async def initialize(self, client_name: str = "python-client"):
-        """Инициализация сессии"""
+        """Инициализация сессии (кэшируется)"""
+        if self._initialized and self.server_info:
+            return {"result": self.server_info}
+        
         result = await self.send_request("initialize", {
             "protocolVersion": "2024-11-05",
             "capabilities": {},
             "clientInfo": {"name": client_name, "version": "1.0.0"}
         })
-        self.session_id = result.get("result", {}).get("sessionId")
-        return result
+        
+        if "result" in result:
+            self.session_id = result.get("result", {}).get("sessionId")
+            self.server_info = result["result"]
+            self._initialized = True
+        
+    async def ensure_initialized(self):
+        """Убеждается, что клиент инициализирован"""
+        if not self._initialized:
+            await self.initialize()
 
     async def tools_list(self):
         """Получение списка доступных инструментов"""
@@ -100,8 +113,14 @@ class MCPManager:
             if server_config.get("enabled", False):
                 self.clients[server_name] = MCPClient(server_name, server_config)
     
+    async def _ensure_all_initialized(self):
+        """Убеждается, что все клиенты инициализированы"""
+        for client in self.clients.values():
+            await client.ensure_initialized()
+    
     async def get_available_servers(self) -> List[str]:
         """Возвращает список доступных MCP серверов"""
+        await self._ensure_all_initialized()
         available = []
         for name, client in self.clients.items():
             if await client.is_available():
@@ -139,18 +158,15 @@ class MCPManager:
             return []
     
     async def get_server_info(self, server_name: str) -> Optional[Dict]:
-        """Получает информацию о сервере"""
+        """Получает информацию о сервере (использует кэш)"""
         if server_name not in self.clients:
             return {}
         
         client = self.clients[server_name]
-        result = await client.initialize()
+        await client.ensure_initialized()
         
-        # Извлекаем информацию о сервере из JSON-RPC ответа
-        if "result" in result:
-            return result["result"]
-        else:
-            return {}
+        # Возвращаем кэшированную информацию
+        return client.server_info or {}
     
     async def get_all_tools(self) -> Dict[str, List[Dict]]:
         """Получает список всех инструментов всех серверов"""
