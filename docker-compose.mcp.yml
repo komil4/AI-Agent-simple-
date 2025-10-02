@@ -20,7 +20,7 @@ services:
     container_name: atlassian-mcp
     ports:
       - "3002:3000"
-      environment:
+    environment:
         - JIRA_API_TOKEN=${JIRA_API_TOKEN}
         - JIRA_PERSONAL_TOKEN=${JIRA_PERSONAL_TOKEN}
         - JIRA_USERNAME=${JIRA_USERNAME}
