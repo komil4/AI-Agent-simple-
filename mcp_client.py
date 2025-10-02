@@ -103,24 +103,27 @@ class MCPManager:
     
     def __init__(self):
         self.clients = {}
-        self._initialize_clients()
+        self._initialized = False
     
-    def _initialize_clients(self):
-        """Инициализирует все MCP клиенты"""
+    async def initialize(self):
+        """Инициализирует все MCP клиенты асинхронно"""
+        if self._initialized:
+            return
+        
         mcp_config = config.get_mcp_config()
         
         for server_name, server_config in mcp_config.items():
             if server_config.get("enabled", False):
-                self.clients[server_name] = MCPClient(server_name, server_config)
-    
-    async def _ensure_all_initialized(self):
-        """Убеждается, что все клиенты инициализированы"""
-        for client in self.clients.values():
-            await client.ensure_initialized()
+                client = MCPClient(server_name, server_config)
+                self.clients[server_name] = client
+                # Инициализируем клиент сразу
+                await client.initialize()
+        
+        self._initialized = True
     
     async def get_available_servers(self) -> List[str]:
         """Возвращает список доступных MCP серверов"""
-        await self._ensure_all_initialized()
+        await self.initialize()
         available = []
         for name, client in self.clients.items():
             if await client.is_available():
@@ -129,6 +132,8 @@ class MCPManager:
     
     async def call_tool(self, server_name: str, tool_name: str, arguments: Optional[Dict[str, Any]] = None) -> Optional[Dict]:
         """Вызывает инструмент на указанном MCP сервере"""
+        await self.initialize()
+        
         if server_name not in self.clients:
             return {"error": f"MCP сервер {server_name} не найден"}
         
@@ -145,6 +150,8 @@ class MCPManager:
     
     async def list_server_tools(self, server_name: str) -> Optional[List[Dict]]:
         """Получает список инструментов указанного сервера"""
+        await self.initialize()
+        
         if server_name not in self.clients:
             return []
         
@@ -159,17 +166,19 @@ class MCPManager:
     
     async def get_server_info(self, server_name: str) -> Optional[Dict]:
         """Получает информацию о сервере (использует кэш)"""
+        await self.initialize()
+        
         if server_name not in self.clients:
             return {}
         
         client = self.clients[server_name]
-        await client.ensure_initialized()
-        
         # Возвращаем кэшированную информацию
         return client.server_info or {}
     
     async def get_all_tools(self) -> Dict[str, List[Dict]]:
         """Получает список всех инструментов всех серверов"""
+        await self.initialize()
+        
         all_tools = {}
         for server_name in self.clients.keys():
             tools = await self.list_server_tools(server_name)
