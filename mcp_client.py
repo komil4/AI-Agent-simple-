@@ -61,12 +61,11 @@ class MCPServer:
         """Подготавливает заголовки аутентификации для конкретного сервера"""
         headers = {"Content-Type": "application/json"}
         
-        if self.name == "atlassian" and hasattr(self, 'api_token') and hasattr(self, 'email'):
-            if self.api_token and self.email:
-                import base64
-                credentials = f"{self.email}:{self.api_token}"
-                encoded_credentials = base64.b64encode(credentials.encode()).decode()
-                headers["Authorization"] = f"Basic {encoded_credentials}"
+        if self.name == "atlassian":
+            # Для Atlassian используем разные токены для Jira и Confluence
+            # В данном случае MCP сервер сам будет обрабатывать аутентификацию
+            # Мы просто передаем заголовки для базовой аутентификации
+            headers["Content-Type"] = "application/json"
         elif self.name == "gitlab" and hasattr(self, 'token') and self.token:
             headers["Authorization"] = f"Bearer {self.token}"
         elif self.name == "activedirectory" and hasattr(self, 'username') and hasattr(self, 'password'):
@@ -96,10 +95,16 @@ class AtlassianMCP(MCPServer):
     
     def __init__(self, server_config: Dict[str, Any]):
         super().__init__("atlassian", server_config)
-        self.api_token = server_config.get("api_token")
-        self.email = server_config.get("email")
+        # Jira конфигурация
+        self.jira_api_token = server_config.get("jira_api_token")
+        self.jira_personal_token = server_config.get("jira_personal_token")
+        self.jira_username = server_config.get("jira_username")
         self.jira_url = server_config.get("jira_url")
+        # Confluence конфигурация
+        self.confluence_api_token = server_config.get("confluence_api_token")
+        self.confluence_username = server_config.get("confluence_username")
         self.confluence_url = server_config.get("confluence_url")
+        self.confluence_personal_token = server_config.get("confluence_personal_token")
     
     # Jira методы
     async def get_jira_issues(self, jql: str = "") -> Optional[Dict]:

@@ -61,10 +61,14 @@ pip install -r requirements.txt
       "enabled": true,
       "host": "localhost",
       "port": 3002,
-      "api_token": "your-atlassian-api-token-here",
-      "email": "your-atlassian-email@example.com",
-      "jira_url": "https://your-domain.atlassian.net",
-      "confluence_url": "https://your-domain.atlassian.net"
+      "jira_api_token": "your-jira-api-token-here",
+      "jira_personal_token": "your-jira-personal-token-here",
+      "jira_username": "your-jira-username@example.com",
+      "jira_url": "https://your-jira-domain.atlassian.net",
+      "confluence_api_token": "your-confluence-api-token-here",
+      "confluence_username": "your-confluence-username@example.com",
+      "confluence_url": "https://your-confluence-domain.atlassian.net/",
+      "confluence_personal_token": "your-confluence-personal-token-here"
     },
     "activedirectory": {
       "enabled": true,
@@ -120,10 +124,14 @@ services:
     ports:
       - "3002:3000"
     environment:
-      - ATLASSIAN_API_TOKEN=${ATLASSIAN_API_TOKEN}
-      - ATLASSIAN_EMAIL=${ATLASSIAN_EMAIL}
+      - JIRA_API_TOKEN=${JIRA_API_TOKEN}
+      - JIRA_PERSONAL_TOKEN=${JIRA_PERSONAL_TOKEN}
+      - JIRA_USERNAME=${JIRA_USERNAME}
       - JIRA_URL=${JIRA_URL}
+      - CONFLUENCE_API_TOKEN=${CONFLUENCE_API_TOKEN}
+      - CONFLUENCE_USERNAME=${CONFLUENCE_USERNAME}
       - CONFLUENCE_URL=${CONFLUENCE_URL}
+      - CONFLUENCE_PERSONAL_TOKEN=${CONFLUENCE_PERSONAL_TOKEN}
   
   activedirectory-mcp:
     image: your-ad-mcp-image
