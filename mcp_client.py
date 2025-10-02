@@ -1,20 +1,60 @@
 import asyncio
 import json
-import aiohttp
 from typing import Dict, Any, Optional, List
 from config import config
+import aiohttp
+from fastmcp import Client
 
 class MCPClient:
-    """Универсальный MCP клиент для работы через streamable HTTP API"""
+    """MCP клиент с архитектурой FastMCP"""
     
     def __init__(self, name: str, server_config: Dict[str, Any]):
         self.name = name
         self.config = server_config
         self.url = server_config.get("url", "http://localhost:3000")
         self.enabled = server_config.get("enabled", False)
-        self.session_id = None
-        self.server_info = None
         self._initialized = False
+        self.mcp_client = None
+    
+    async def ensure_initialized(self):
+        """Убеждается, что клиент инициализирован"""
+        if not self._initialized:
+            await self.mcp_client.is_connected()
+    
+    async def list_tools(self):
+        """Получение списка доступных инструментов"""
+        try:
+            return await self.mcp_client.list_tools()
+        except Exception as e:
+            return {"error": f"Ошибка получения инструментов {self.name}: {str(e)}"}
+    
+    async def call_tool(self, tool_name: str, arguments: Dict[str, Any]):
+        """Вызов инструмента"""
+        try:
+            return await self.mcp_client.tools.call(tool_name, arguments)
+        except Exception as e:
+            return {"error": f"Ошибка вызова инструмента {tool_name} на {self.name}: {str(e)}"}
+    
+    async def list_resources(self):
+        """Получение списка ресурсов"""
+        try:
+            return await self.mcp_client.list_resources()
+        except Exception as e:
+            return {"error": f"Ошибка получения ресурсов {self.name}: {str(e)}"}
+    
+    async def read_resource(self, uri: str):
+        """Чтение ресурса"""
+        try:
+            return await self.mcp_client.read_resource(uri)
+        except Exception as e:
+            return {"error": f"Ошибка чтения ресурса {uri} на {self.name}: {str(e)}"}
+    
+    async def initialize(self):
+        """Инициализация MCP клиента"""
+        if not self._initialized:
+            self.mcp_client = Client(self.name)
+            await self.mcp_client.is_connected()
+            self._initialized = True
     
     async def is_available(self) -> bool:
         """Проверяет доступность MCP сервера"""
@@ -22,109 +62,18 @@ class MCPClient:
             return False
         
         try:
-            async with aiohttp.ClientSession() as session:
-                # Пробуем разные endpoints для проверки доступности
-                endpoints_to_try = [
-                    f"{self.url}/mcp/health",
-                    f"{self.url}/health", 
-                    f"{self.url}/mcp",
-                    f"{self.url}/"
-                ]
-                
-                for endpoint in endpoints_to_try:
-                    try:
-                        async with session.get(endpoint, timeout=5.0) as response:
-                            if response.status == 200:
-                                return True
-                            elif response.status == 406:  # Not Acceptable - сервер работает, но нужны другие заголовки
-                                return True
-                    except:
-                        continue
-                
-                return False
+            if not self._initialized:
+                await self.initialize()
+            return await self.mcp_client.is_connected()
         except:
             return False
     
-    async def send_request(self, method: str, params: Dict[str, Any] = None) -> Dict[str, Any]:
-        """Отправка запроса к MCP серверу"""
-        if not self.enabled:
-            return {"error": f"MCP сервер {self.name} отключен"}
-        
-        try:
-            async with aiohttp.ClientSession() as session:
-                payload = {
-                    "jsonrpc": "2.0",
-                    "id": 1,
-                    "method": method,
-                    "params": params or {}
-                }
-                
-                # Пробуем разные endpoints для MCP запросов
-                endpoints_to_try = [
-                    f"{self.url}/mcp",
-                    f"{self.url}/",
-                    f"{self.url}/mcp/"
-                ]
-                
-                for endpoint in endpoints_to_try:
-                    try:
-                        async with session.post(
-                            endpoint,
-                            json=payload,
-                            headers={"Content-Type": "application/json"}
-                        ) as response:
-                            if response.status == 200:
-                                return await response.json()
-                            elif response.status == 406:
-                                # Сервер работает, но нужны другие заголовки - попробуем следующий endpoint
-                                continue
-                    except:
-                        continue
-                
-                return {"error": f"Не удалось подключиться к {self.name}"}
-        except Exception as e:
-            return {"error": f"Ошибка подключения к {self.name}: {str(e)}"}
-
-    async def initialize(self, client_name: str = "python-client"):
-        """Инициализация сессии (кэшируется)"""
-        if self._initialized and self.server_info:
-            return {"result": self.server_info}
-        
-        result = await self.send_request("initialize", {
-            "protocolVersion": "2024-11-05",
-            "capabilities": {},
-            "clientInfo": {"name": client_name, "version": "1.0.0"}
-        })
-        
-        if "result" in result:
-            self.session_id = result.get("result", {}).get("sessionId")
-            self.server_info = result["result"]
-            self._initialized = True
-        
-    async def ensure_initialized(self):
-        """Убеждается, что клиент инициализирован"""
-        if not self._initialized:
-            await self.initialize()
-
-    async def tools_list(self):
-        """Получение списка доступных инструментов"""
-        return await self.send_request("tools/list")
-
-    async def tools_call(self, tool_name: str, arguments: Dict[str, Any]):
-        """Вызов инструмента"""
-        return await self.send_request("tools/call", {
-            "name": tool_name,
-            "arguments": arguments
-        })
-
-    async def resources_list(self):
-        """Получение списка ресурсов"""
-        return await self.send_request("resources/list")
-
-    async def resources_read(self, uri: str):
-        """Чтение ресурса"""
-        return await self.send_request("resources/read", {"uri": uri})
-
+    async def close(self):
+        """Закрытие соединения"""
+        if self.mcp_client:
+            await self.mcp_client.close()
+            self.mcp_client = None
+            self._initialized = False
 
 
 class MCPManager:
@@ -167,7 +116,7 @@ class MCPManager:
             return {"error": f"MCP сервер {server_name} не найден"}
         
         client = self.clients[server_name]
-        result = await client.tools_call(tool_name, arguments or {})
+        result = await client.call_tool(tool_name, arguments or {})
         
         # Извлекаем результат из JSON-RPC ответа
         if "result" in result:
@@ -185,7 +134,7 @@ class MCPManager:
             return []
         
         client = self.clients[server_name]
-        result = await client.tools_list()
+        result = await client.list_tools()
         
         # Извлекаем список инструментов из JSON-RPC ответа
         if "result" in result and "tools" in result["result"]:
@@ -214,6 +163,13 @@ class MCPManager:
             if tools:
                 all_tools[server_name] = tools
         return all_tools
+    
+    async def close_all(self):
+        """Закрывает все соединения"""
+        for client in self.clients.values():
+            await client.close()
+        self.clients.clear()
+        self._initialized = False
 
 # Глобальный экземпляр менеджера MCP
 mcp_manager = MCPManager()
