@@ -52,31 +52,15 @@ pip install -r requirements.txt
   "mcp_servers": {
     "gitlab": {
       "enabled": true,
-      "host": "localhost",
-      "port": 3001,
-      "token": "your-gitlab-token-here",
-      "url": "https://gitlab.example.com"
+      "url": "http://localhost:3001"
     },
     "atlassian": {
       "enabled": true,
-      "host": "localhost",
-      "port": 3002,
-      "jira_api_token": "your-jira-api-token-here",
-      "jira_personal_token": "your-jira-personal-token-here",
-      "jira_username": "your-jira-username@example.com",
-      "jira_url": "https://your-jira-domain.atlassian.net",
-      "confluence_api_token": "your-confluence-api-token-here",
-      "confluence_username": "your-confluence-username@example.com",
-      "confluence_url": "https://your-confluence-domain.atlassian.net/",
-      "confluence_personal_token": "your-confluence-personal-token-here"
+      "url": "http://localhost:3002"
     },
     "activedirectory": {
       "enabled": true,
-      "host": "localhost",
-      "port": 3003,
-      "domain": "your-domain.com",
-      "username": "your-ad-username",
-      "password": "your-ad-password"
+      "url": "http://localhost:3003"
     }
   },
   "server": {
@@ -86,6 +70,8 @@ pip install -r requirements.txt
   }
 }
 ```
+
+**Важно**: Токены и другие секретные данные для MCP серверов передаются через переменные окружения при запуске контейнеров, а не хранятся в конфигурационном файле.
 
 ### 3. Получение API токенов
 
@@ -103,6 +89,8 @@ pip install -r requirements.txt
 ### 4. Настройка MCP серверов
 
 MCP серверы должны быть развернуты в Docker контейнерах и доступны по указанным в конфигурации адресам и портам.
+
+**Секретные данные** (токены, пароли, URL внешних систем) передаются через переменные окружения при запуске контейнеров.
 
 Пример Docker Compose для MCP серверов:
 
@@ -186,10 +174,12 @@ uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 
 ## Безопасность
 
-- Не храните секретные данные в открытом виде в config.json
-- Используйте переменные окружения для чувствительной информации
-- Настройте HTTPS для продакшн среды
-- Ограничьте доступ к MCP серверам через файрвол
+- **Конфигурационные файлы**: Не храните секретные данные в `config.json` или `config.demo.json`
+- **Переменные окружения**: Используйте файл `.env` для чувствительной информации
+- **Git**: Файл `config.json` исключен из репозитория через `.gitignore`
+- **HTTPS**: Настройте HTTPS для продакшн среды
+- **Доступ**: Ограничьте доступ к MCP серверам через файрвол
+- **Токены**: Регулярно обновляйте API токены и пароли
 
 ## Разработка
 

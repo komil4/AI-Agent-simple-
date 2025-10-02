@@ -4,12 +4,14 @@
 # GitLab MCP
 GITLAB_TOKEN=your-gitlab-token-here
 GITLAB_URL=https://gitlab.example.com
+GITLAB_MCP_URL=http://localhost:3001
 
 # Atlassian MCP (Jira)
 JIRA_API_TOKEN=your-jira-api-token-here
 JIRA_PERSONAL_TOKEN=your-jira-personal-token-here
 JIRA_USERNAME=your-jira-username@example.com
 JIRA_URL=https://your-jira-domain.atlassian.net
+ATLASSIAN_MCP_URL=http://localhost:3002
 
 # Atlassian MCP (Confluence)
 CONFLUENCE_API_TOKEN=your-confluence-api-token-here
@@ -21,3 +23,4 @@ CONFLUENCE_PERSONAL_TOKEN=your-confluence-personal-token-here
 AD_DOMAIN=your-domain.com
 AD_USERNAME=your-ad-username
 AD_PASSWORD=your-ad-password
+AD_MCP_URL=http://localhost:3003

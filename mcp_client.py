@@ -10,9 +10,7 @@ class MCPClient:
     def __init__(self, name: str, server_config: Dict[str, Any]):
         self.name = name
         self.config = server_config
-        self.host = server_config.get("host", "localhost")
-        self.port = server_config.get("port", 3000)
-        self.base_url = f"http://{self.host}:{self.port}"
+        self.url = server_config.get("url", "http://localhost:3000")
         self.enabled = server_config.get("enabled", False)
     
     async def is_available(self) -> bool:
@@ -23,13 +21,13 @@ class MCPClient:
         try:
             async with httpx.AsyncClient(timeout=5.0) as client:
                 # Проверяем health endpoint или просто доступность порта
-                response = await client.get(f"{self.base_url}/health")
+                response = await client.get(f"{self.url}/health")
                 return response.status_code == 200
         except:
             try:
                 # Альтернативная проверка - просто подключение к порту
                 async with httpx.AsyncClient(timeout=5.0) as client:
-                    response = await client.get(f"{self.base_url}/")
+                    response = await client.get(f"{self.url}/")
                     return True
             except:
                 return False
@@ -53,7 +51,7 @@ class MCPClient:
             
             async with httpx.AsyncClient(timeout=30.0) as client:
                 response = await client.post(
-                    f"{self.base_url}/",
+                    f"{self.url}/",
                     json=request_data,
                     headers={"Content-Type": "application/json"}
                 )
@@ -86,7 +84,7 @@ class MCPClient:
             
             async with httpx.AsyncClient(timeout=10.0) as client:
                 response = await client.post(
-                    f"{self.base_url}/",
+                    f"{self.url}/",
                     json=request_data,
                     headers={"Content-Type": "application/json"}
                 )
@@ -125,7 +123,7 @@ class MCPClient:
             
             async with httpx.AsyncClient(timeout=10.0) as client:
                 response = await client.post(
-                    f"{self.base_url}/",
+                    f"{self.url}/",
                     json=request_data,
                     headers={"Content-Type": "application/json"}
                 )

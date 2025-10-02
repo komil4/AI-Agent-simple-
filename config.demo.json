@@ -10,31 +10,15 @@
   "mcp_servers": {
     "gitlab": {
       "enabled": true,
-      "host": "localhost",
-      "port": 3001,
-      "token": "your-gitlab-token-here",
-      "url": "https://gitlab.example.com"
+      "url": "http://localhost:3001"
     },
     "atlassian": {
       "enabled": true,
-      "host": "localhost",
-      "port": 3002,
-      "jira_api_token": "your-jira-api-token-here",
-      "jira_personal_token": "your-jira-personal-token-here",
-      "jira_username": "your-jira-username@example.com",
-      "jira_url": "https://your-jira-domain.atlassian.net",
-      "confluence_api_token": "your-confluence-api-token-here",
-      "confluence_username": "your-confluence-username@example.com",
-      "confluence_url": "https://your-confluence-domain.atlassian.net/",
-      "confluence_personal_token": "your-confluence-personal-token-here"
+      "url": "http://localhost:3002"
     },
     "activedirectory": {
       "enabled": true,
-      "host": "localhost",
-      "port": 3003,
-      "domain": "your-domain.com",
-      "username": "your-ad-username",
-      "password": "your-ad-password"
+      "url": "http://localhost:3003"
     }
   },
   "server": {
