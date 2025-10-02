@@ -1,0 +1,61 @@
+version: '3.8'
+
+services:
+  # GitLab MCP Server
+  gitlab-mcp:
+    image: gitlab-mcp-server:latest
+    container_name: gitlab-mcp
+    ports:
+      - "3001:3000"
+    environment:
+      - GITLAB_TOKEN=${GITLAB_TOKEN}
+      - GITLAB_URL=${GITLAB_URL}
+    restart: unless-stopped
+    networks:
+      - mcp-network
+
+  # Jira MCP Server
+  jira-mcp:
+    image: jira-mcp-server:latest
+    container_name: jira-mcp
+    ports:
+      - "3002:3000"
+    environment:
+      - JIRA_API_TOKEN=${JIRA_API_TOKEN}
+      - JIRA_EMAIL=${JIRA_EMAIL}
+      - JIRA_URL=${JIRA_URL}
+    restart: unless-stopped
+    networks:
+      - mcp-network
+
+  # Confluence MCP Server
+  confluence-mcp:
+    image: confluence-mcp-server:latest
+    container_name: confluence-mcp
+    ports:
+      - "3003:3000"
+    environment:
+      - CONFLUENCE_API_TOKEN=${CONFLUENCE_API_TOKEN}
+      - CONFLUENCE_EMAIL=${CONFLUENCE_EMAIL}
+      - CONFLUENCE_URL=${CONFLUENCE_URL}
+    restart: unless-stopped
+    networks:
+      - mcp-network
+
+  # Active Directory MCP Server
+  activedirectory-mcp:
+    image: activedirectory-mcp-server:latest
+    container_name: activedirectory-mcp
+    ports:
+      - "3004:3000"
+    environment:
+      - AD_DOMAIN=${AD_DOMAIN}
+      - AD_USERNAME=${AD_USERNAME}
+      - AD_PASSWORD=${AD_PASSWORD}
+    restart: unless-stopped
+    networks:
+      - mcp-network
+
+networks:
+  mcp-network:
+    driver: bridge

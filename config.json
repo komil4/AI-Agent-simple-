@@ -1,0 +1,48 @@
+{
+  "llm": {
+    "provider": "openai",
+    "api_key": "your-openai-api-key-here",
+    "model": "gpt-3.5-turbo",
+    "base_url": "https://api.openai.com/v1",
+    "temperature": 0.7,
+    "max_tokens": 1000
+  },
+  "mcp_servers": {
+    "gitlab": {
+      "enabled": true,
+      "host": "localhost",
+      "port": 3001,
+      "token": "your-gitlab-token-here",
+      "url": "https://gitlab.example.com"
+    },
+    "jira": {
+      "enabled": true,
+      "host": "localhost",
+      "port": 3002,
+      "api_token": "your-jira-api-token-here",
+      "email": "your-jira-email@example.com",
+      "url": "https://your-domain.atlassian.net"
+    },
+    "confluence": {
+      "enabled": true,
+      "host": "localhost",
+      "port": 3003,
+      "api_token": "your-confluence-api-token-here",
+      "email": "your-confluence-email@example.com",
+      "url": "https://your-domain.atlassian.net"
+    },
+    "activedirectory": {
+      "enabled": true,
+      "host": "localhost",
+      "port": 3004,
+      "domain": "your-domain.com",
+      "username": "your-ad-username",
+      "password": "your-ad-password"
+    }
+  },
+  "server": {
+    "host": "0.0.0.0",
+    "port": 8000,
+    "debug": true
+  }
+}
