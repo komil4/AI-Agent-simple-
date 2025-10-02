@@ -4,7 +4,7 @@ from typing import Dict, Any, Optional
 from pydantic import BaseModel
 
 class Config:
-    def __init__(self, config_path: str = "config.json"):
+    def __init__(self, config_path: str = "config.demo.json"):
         self.config_path = config_path
         self._config = self._load_config()
     

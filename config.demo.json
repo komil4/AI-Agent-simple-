@@ -15,26 +15,19 @@
       "token": "your-gitlab-token-here",
       "url": "https://gitlab.example.com"
     },
-    "jira": {
+    "atlassian": {
       "enabled": true,
       "host": "localhost",
       "port": 3002,
-      "api_token": "your-jira-api-token-here",
-      "email": "your-jira-email@example.com",
-      "url": "https://your-domain.atlassian.net"
-    },
-    "confluence": {
-      "enabled": true,
-      "host": "localhost",
-      "port": 3003,
-      "api_token": "your-confluence-api-token-here",
-      "email": "your-confluence-email@example.com",
-      "url": "https://your-domain.atlassian.net"
+      "api_token": "your-atlassian-api-token-here",
+      "email": "your-atlassian-email@example.com",
+      "jira_url": "https://your-domain.atlassian.net",
+      "confluence_url": "https://your-domain.atlassian.net"
     },
     "activedirectory": {
       "enabled": true,
       "host": "localhost",
-      "port": 3004,
+      "port": 3003,
       "domain": "your-domain.com",
       "username": "your-ad-username",
       "password": "your-ad-password"

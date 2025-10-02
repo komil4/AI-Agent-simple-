@@ -8,8 +8,7 @@
 - 🤖 Интеграция с OpenAI LLM
 - 🔌 Поддержка MCP серверов:
   - GitLab (проекты, задачи)
-  - Jira (задачи, проекты)
-  - Confluence (пространства, страницы)
+  - Atlassian (объединенный сервер для Jira, Confluence)
   - Active Directory (пользователи, группы)
 - ⚡ Real-time общение через WebSocket
 - 📱 Адаптивный дизайн
@@ -58,26 +57,19 @@ pip install -r requirements.txt
       "token": "your-gitlab-token-here",
       "url": "https://gitlab.example.com"
     },
-    "jira": {
+    "atlassian": {
       "enabled": true,
       "host": "localhost",
       "port": 3002,
-      "api_token": "your-jira-api-token-here",
-      "email": "your-jira-email@example.com",
-      "url": "https://your-domain.atlassian.net"
-    },
-    "confluence": {
-      "enabled": true,
-      "host": "localhost",
-      "port": 3003,
-      "api_token": "your-confluence-api-token-here",
-      "email": "your-confluence-email@example.com",
-      "url": "https://your-domain.atlassian.net"
+      "api_token": "your-atlassian-api-token-here",
+      "email": "your-atlassian-email@example.com",
+      "jira_url": "https://your-domain.atlassian.net",
+      "confluence_url": "https://your-domain.atlassian.net"
     },
     "activedirectory": {
       "enabled": true,
       "host": "localhost",
-      "port": 3004,
+      "port": 3003,
       "domain": "your-domain.com",
       "username": "your-ad-username",
       "password": "your-ad-password"
@@ -98,10 +90,10 @@ pip install -r requirements.txt
 2. Перейдите в Settings → Access Tokens
 3. Создайте новый токен с правами: `api`, `read_api`, `read_repository`
 
-#### Confluence API Token
-1. Войдите в Atlassian Account (тот же аккаунт, что и для Jira)
+#### Atlassian API Token (для Jira и Confluence)
+1. Войдите в Atlassian Account
 2. Перейдите в Security → API tokens
-3. Используйте тот же API токен, что и для Jira
+3. Создайте новый API токен
 4. Используйте email и API токен для аутентификации
 
 ### 4. Настройка MCP серверов
@@ -113,36 +105,30 @@ MCP серверы должны быть развернуты в Docker конт
 ```yaml
 version: '3.8'
 services:
+  # GitLab MCP Server
   gitlab-mcp:
-    image: your-gitlab-mcp-image
+    image: ghcr.io/nguyenvanduocit/gitlab-mcp:latest
     ports:
       - "3001:3000"
     environment:
       - GITLAB_TOKEN=${GITLAB_TOKEN}
       - GITLAB_URL=${GITLAB_URL}
   
-  jira-mcp:
-    image: your-jira-mcp-image
+  # Atlassian MCP Server (объединенный для Jira, Confluence)
+  atlassian-mcp:
+    image: atlassian-mcp-server:latest
     ports:
       - "3002:3000"
     environment:
-      - JIRA_API_TOKEN=${JIRA_API_TOKEN}
-      - JIRA_EMAIL=${JIRA_EMAIL}
+      - ATLASSIAN_API_TOKEN=${ATLASSIAN_API_TOKEN}
+      - ATLASSIAN_EMAIL=${ATLASSIAN_EMAIL}
       - JIRA_URL=${JIRA_URL}
-  
-  confluence-mcp:
-    image: your-confluence-mcp-image
-    ports:
-      - "3003:3000"
-    environment:
-      - CONFLUENCE_API_TOKEN=${CONFLUENCE_API_TOKEN}
-      - CONFLUENCE_EMAIL=${CONFLUENCE_EMAIL}
       - CONFLUENCE_URL=${CONFLUENCE_URL}
   
   activedirectory-mcp:
     image: your-ad-mcp-image
     ports:
-      - "3004:3000"
+      - "3003:3000"
     environment:
       - AD_DOMAIN=${AD_DOMAIN}
       - AD_USERNAME=${AD_USERNAME}

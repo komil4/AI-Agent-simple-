@@ -45,14 +45,13 @@ class LLMService:
 
 Доступные MCP серверы:
 - GitLab: для работы с проектами и задачами GitLab
-- Jira: для работы с задачами и проектами Jira
-- Confluence: для работы с документацией и страницами Confluence
+- Atlassian: объединенный сервер для работы с Jira и Confluence
 - Active Directory: для работы с пользователями и группами AD
 
 Если пользователь просит информацию из этих систем, используйте соответствующие MCP команды:
 - Для GitLab: get_projects, get_issues
-- Для Jira: get_projects, get_issues
-- Для Confluence: get_spaces, get_pages
+- Для Jira: get_jira_projects, get_jira_issues
+- Для Confluence: get_confluence_spaces, get_confluence_pages
 - Для Active Directory: get_users, get_groups
 
 Отвечайте на русском языке, если пользователь пишет на русском."""
@@ -105,10 +104,10 @@ class LLMService:
             requests.append(("gitlab", "get_projects", {}))
         
         if any(word in message_lower for word in ["jira", "задача", "тикет", "баг"]):
-            requests.append(("jira", "get_issues", {"jql": ""}))
+            requests.append(("atlassian", "get_jira_issues", {"jql": ""}))
         
         if any(word in message_lower for word in ["confluence", "документ", "страница", "wiki"]):
-            requests.append(("confluence", "get_spaces", {}))
+            requests.append(("atlassian", "get_confluence_spaces", {}))
         
         if any(word in message_lower for word in ["пользователь", "группа", "ad", "active directory"]):
             requests.append(("activedirectory", "get_users", {}))
