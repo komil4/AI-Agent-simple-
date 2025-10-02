@@ -50,8 +50,7 @@ class MCPClient:
             }
             
             headers = {
-                "Content-Type": "application/json",
-                "Accept": "text/event-stream"
+                "Content-Type": "application/json"
             }
             
             async with httpx.AsyncClient(timeout=30.0) as client:
@@ -59,86 +58,6 @@ class MCPClient:
                     f"{self.url}/",
                     json=request_data,
                     headers=headers
-                )
-                
-                if response.status_code == 200:
-                    # Проверяем тип контента
-                    content_type = response.headers.get("content-type", "")
-                    if "text/event-stream" in content_type:
-                        # Обрабатываем Server-Sent Events
-                        return await self._process_sse_response(response)
-                    else:
-                        # Обычный JSON ответ
-                        result = response.json()
-                        if "result" in result:
-                            return result["result"]
-                        elif "error" in result:
-                            return {"error": result["error"]}
-                        else:
-                            return result
-                elif response.status_code == 406:
-                    # Сервер не поддерживает SSE, используем fallback
-                    return await self.call_tool_fallback(tool_name, arguments)
-                else:
-                    return {"error": f"HTTP {response.status_code}: {response.text}"}
-                    
-        except Exception as e:
-            return {"error": f"Ошибка подключения к {self.name}: {str(e)}"}
-    
-    async def _process_sse_response(self, response) -> Dict:
-        """Обрабатывает Server-Sent Events ответ"""
-        try:
-            content = await response.aread()
-            text_content = content.decode('utf-8')
-            
-            # Парсим SSE события
-            events = []
-            for line in text_content.split('\n'):
-                if line.startswith('data: '):
-                    data = line[6:]  # Убираем "data: "
-                    if data.strip():
-                        try:
-                            event_data = json.loads(data)
-                            events.append(event_data)
-                        except json.JSONDecodeError:
-                            continue
-            
-            # Возвращаем последнее событие с результатом
-            if events:
-                last_event = events[-1]
-                if "result" in last_event:
-                    return last_event["result"]
-                elif "error" in last_event:
-                    return {"error": last_event["error"]}
-                else:
-                    return {"events": events}
-            
-            return {"error": "Нет данных в SSE потоке"}
-            
-        except Exception as e:
-            return {"error": f"Ошибка обработки SSE: {str(e)}"}
-    
-    async def call_tool_fallback(self, tool_name: str, arguments: Optional[Dict[str, Any]] = None) -> Optional[Dict]:
-        """Fallback метод для вызова инструмента без SSE (обычный HTTP)"""
-        if not self.enabled:
-            return None
-        
-        try:
-            request_data = {
-                "jsonrpc": "2.0",
-                "id": 1,
-                "method": "tools/call",
-                "params": {
-                    "name": tool_name,
-                    "arguments": arguments or {}
-                }
-            }
-            
-            async with httpx.AsyncClient(timeout=30.0) as client:
-                response = await client.post(
-                    f"{self.url}/",
-                    json=request_data,
-                    headers={"Content-Type": "application/json"}
                 )
                 
                 if response.status_code == 200:
@@ -168,8 +87,7 @@ class MCPClient:
             }
             
             headers = {
-                "Content-Type": "application/json",
-                "Accept": "text/event-stream"
+                "Content-Type": "application/json"
             }
             
             async with httpx.AsyncClient(timeout=10.0) as client:
@@ -177,48 +95,6 @@ class MCPClient:
                     f"{self.url}/",
                     json=request_data,
                     headers=headers
-                )
-                
-                if response.status_code == 200:
-                    content_type = response.headers.get("content-type", "")
-                    if "text/event-stream" in content_type:
-                        result = await self._process_sse_response(response)
-                        if "tools" in result:
-                            return result["tools"]
-                        else:
-                            return []
-                    else:
-                        result = response.json()
-                        if "result" in result and "tools" in result["result"]:
-                            return result["result"]["tools"]
-                        else:
-                            return []
-                elif response.status_code == 406:
-                    # Сервер не поддерживает SSE, используем fallback
-                    return await self.list_tools_fallback()
-                else:
-                    return []
-                    
-        except Exception as e:
-            return []
-    
-    async def list_tools_fallback(self) -> Optional[List[Dict]]:
-        """Fallback метод для получения списка инструментов без SSE"""
-        if not self.enabled:
-            return None
-        
-        try:
-            request_data = {
-                "jsonrpc": "2.0",
-                "id": 1,
-                "method": "tools/list"
-            }
-            
-            async with httpx.AsyncClient(timeout=10.0) as client:
-                response = await client.post(
-                    f"{self.url}/",
-                    json=request_data,
-                    headers={"Content-Type": "application/json"}
                 )
                 
                 if response.status_code == 200:
@@ -254,8 +130,7 @@ class MCPClient:
             }
             
             headers = {
-                "Content-Type": "application/json",
-                "Accept": "text/event-stream"
+                "Content-Type": "application/json"
             }
             
             async with httpx.AsyncClient(timeout=10.0) as client:
@@ -263,52 +138,6 @@ class MCPClient:
                     f"{self.url}/",
                     json=request_data,
                     headers=headers
-                )
-                
-                if response.status_code == 200:
-                    content_type = response.headers.get("content-type", "")
-                    if "text/event-stream" in content_type:
-                        return await self._process_sse_response(response)
-                    else:
-                        result = response.json()
-                        if "result" in result:
-                            return result["result"]
-                        else:
-                            return {}
-                elif response.status_code == 406:
-                    # Сервер не поддерживает SSE, используем fallback
-                    return await self.get_server_info_fallback()
-                else:
-                    return {}
-                    
-        except Exception as e:
-            return {}
-    
-    async def get_server_info_fallback(self) -> Optional[Dict]:
-        """Fallback метод для получения информации о сервере без SSE"""
-        if not self.enabled:
-            return None
-        
-        try:
-            request_data = {
-                "jsonrpc": "2.0",
-                "id": 1,
-                "method": "initialize",
-                "params": {
-                    "protocolVersion": "2024-11-05",
-                    "capabilities": {},
-                    "clientInfo": {
-                        "name": "ai-chat-client",
-                        "version": "1.0.0"
-                    }
-                }
-            }
-            
-            async with httpx.AsyncClient(timeout=10.0) as client:
-                response = await client.post(
-                    f"{self.url}/",
-                    json=request_data,
-                    headers={"Content-Type": "application/json"}
                 )
                 
                 if response.status_code == 200:
@@ -322,7 +151,7 @@ class MCPClient:
                     
         except Exception as e:
             return {}
-
+    
 class MCPManager:
     """Менеджер для управления всеми MCP серверами"""
     
