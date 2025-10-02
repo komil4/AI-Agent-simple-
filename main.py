@@ -100,6 +100,49 @@ async def get_chat_history():
     """Получает историю чата"""
     return {"history": chat_history}
 
+@app.get("/api/mcp/tools")
+async def get_mcp_tools():
+    """Получает список всех доступных инструментов MCP серверов"""
+    try:
+        all_tools = await mcp_manager.get_all_tools()
+        return {"tools": all_tools}
+    except Exception as e:
+        return {"error": f"Ошибка получения инструментов: {str(e)}"}
+
+@app.get("/api/mcp/tools/{server_name}")
+async def get_server_tools(server_name: str):
+    """Получает список инструментов конкретного MCP сервера"""
+    try:
+        tools = await mcp_manager.list_server_tools(server_name)
+        return {"server": server_name, "tools": tools}
+    except Exception as e:
+        return {"error": f"Ошибка получения инструментов сервера {server_name}: {str(e)}"}
+
+@app.post("/api/mcp/call")
+async def call_mcp_tool(request: Dict[str, Any]):
+    """Вызывает инструмент MCP сервера"""
+    try:
+        server_name = request.get("server")
+        tool_name = request.get("tool")
+        arguments = request.get("arguments", {})
+        
+        if not server_name or not tool_name:
+            return {"error": "Необходимо указать server и tool"}
+        
+        result = await mcp_manager.call_tool(server_name, tool_name, arguments)
+        return {"result": result}
+    except Exception as e:
+        return {"error": f"Ошибка вызова инструмента: {str(e)}"}
+
+@app.get("/api/mcp/info/{server_name}")
+async def get_server_info(server_name: str):
+    """Получает информацию о MCP сервере"""
+    try:
+        info = await mcp_manager.get_server_info(server_name)
+        return {"server": server_name, "info": info}
+    except Exception as e:
+        return {"error": f"Ошибка получения информации о сервере {server_name}: {str(e)}"}
+
 @app.get("/api/mcp/status")
 async def get_mcp_status():
     """Получает статус MCP серверов"""

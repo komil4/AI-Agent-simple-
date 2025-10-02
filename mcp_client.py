@@ -4,8 +4,8 @@ import httpx
 from typing import Dict, Any, Optional, List
 from config import config
 
-class MCPServer:
-    """Базовый класс для работы с MCP серверами"""
+class MCPClient:
+    """Универсальный MCP клиент для работы через streamable HTTP API"""
     
     def __init__(self, name: str, server_config: Dict[str, Any]):
         self.name = name
@@ -22,190 +22,181 @@ class MCPServer:
         
         try:
             async with httpx.AsyncClient(timeout=5.0) as client:
+                # Проверяем health endpoint или просто доступность порта
                 response = await client.get(f"{self.base_url}/health")
                 return response.status_code == 200
         except:
-            return False
+            try:
+                # Альтернативная проверка - просто подключение к порту
+                async with httpx.AsyncClient(timeout=5.0) as client:
+                    response = await client.get(f"{self.base_url}/")
+                    return True
+            except:
+                return False
     
-    async def send_request(self, method: str, endpoint: str, data: Optional[Dict] = None) -> Optional[Dict]:
-        """Отправляет запрос к MCP серверу"""
+    async def call_tool(self, tool_name: str, arguments: Optional[Dict[str, Any]] = None) -> Optional[Dict]:
+        """Вызывает инструмент MCP сервера через streamable HTTP API"""
         if not self.enabled:
             return None
         
         try:
-            # Подготавливаем заголовки для аутентификации
-            headers = await self._prepare_auth_headers()
+            # Формируем запрос в формате MCP
+            request_data = {
+                "jsonrpc": "2.0",
+                "id": 1,
+                "method": "tools/call",
+                "params": {
+                    "name": tool_name,
+                    "arguments": arguments or {}
+                }
+            }
             
             async with httpx.AsyncClient(timeout=30.0) as client:
-                url = f"{self.base_url}{endpoint}"
-                
-                if method.upper() == "GET":
-                    response = await client.get(url, headers=headers)
-                elif method.upper() == "POST":
-                    response = await client.post(url, json=data, headers=headers)
-                elif method.upper() == "PUT":
-                    response = await client.put(url, json=data, headers=headers)
-                elif method.upper() == "DELETE":
-                    response = await client.delete(url, headers=headers)
-                else:
-                    return None
+                response = await client.post(
+                    f"{self.base_url}/",
+                    json=request_data,
+                    headers={"Content-Type": "application/json"}
+                )
                 
                 if response.status_code == 200:
-                    return response.json()
+                    result = response.json()
+                    if "result" in result:
+                        return result["result"]
+                    elif "error" in result:
+                        return {"error": result["error"]}
+                    else:
+                        return result
                 else:
                     return {"error": f"HTTP {response.status_code}: {response.text}"}
+                    
         except Exception as e:
             return {"error": f"Ошибка подключения к {self.name}: {str(e)}"}
     
-    async def _prepare_auth_headers(self) -> Dict[str, str]:
-        """Подготавливает заголовки аутентификации для конкретного сервера"""
-        headers = {"Content-Type": "application/json"}
+    async def list_tools(self) -> Optional[List[Dict]]:
+        """Получает список доступных инструментов MCP сервера"""
+        if not self.enabled:
+            return None
         
-        if self.name == "atlassian":
-            # Для Atlassian используем разные токены для Jira и Confluence
-            # В данном случае MCP сервер сам будет обрабатывать аутентификацию
-            # Мы просто передаем заголовки для базовой аутентификации
-            headers["Content-Type"] = "application/json"
-        elif self.name == "gitlab" and hasattr(self, 'token') and self.token:
-            headers["Authorization"] = f"Bearer {self.token}"
-        elif self.name == "activedirectory" and hasattr(self, 'username') and hasattr(self, 'password'):
-            if self.username and self.password:
-                headers["Authorization"] = f"Bearer {self.password}"  # Упрощенная аутентификация для AD
+        try:
+            request_data = {
+                "jsonrpc": "2.0",
+                "id": 1,
+                "method": "tools/list"
+            }
+            
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                response = await client.post(
+                    f"{self.base_url}/",
+                    json=request_data,
+                    headers={"Content-Type": "application/json"}
+                )
+                
+                if response.status_code == 200:
+                    result = response.json()
+                    if "result" in result and "tools" in result["result"]:
+                        return result["result"]["tools"]
+                    else:
+                        return []
+                else:
+                    return []
+                    
+        except Exception as e:
+            return []
+    
+    async def get_server_info(self) -> Optional[Dict]:
+        """Получает информацию о MCP сервере"""
+        if not self.enabled:
+            return None
         
-        return headers
-
-class GitLabMCP(MCPServer):
-    """MCP сервер для GitLab"""
-    
-    def __init__(self, server_config: Dict[str, Any]):
-        super().__init__("gitlab", server_config)
-        self.token = server_config.get("token")
-        self.url = server_config.get("url")
-    
-    async def get_projects(self) -> Optional[Dict]:
-        """Получает список проектов"""
-        return await self.send_request("GET", "/api/v4/projects")
-    
-    async def get_issues(self, project_id: str) -> Optional[Dict]:
-        """Получает список задач проекта"""
-        return await self.send_request("GET", f"/api/v4/projects/{project_id}/issues")
-
-class AtlassianMCP(MCPServer):
-    """Объединенный MCP сервер для Atlassian (Jira, Confluence)"""
-    
-    def __init__(self, server_config: Dict[str, Any]):
-        super().__init__("atlassian", server_config)
-        # Jira конфигурация
-        self.jira_api_token = server_config.get("jira_api_token")
-        self.jira_personal_token = server_config.get("jira_personal_token")
-        self.jira_username = server_config.get("jira_username")
-        self.jira_url = server_config.get("jira_url")
-        # Confluence конфигурация
-        self.confluence_api_token = server_config.get("confluence_api_token")
-        self.confluence_username = server_config.get("confluence_username")
-        self.confluence_url = server_config.get("confluence_url")
-        self.confluence_personal_token = server_config.get("confluence_personal_token")
-    
-    # Jira методы
-    async def get_jira_issues(self, jql: str = "") -> Optional[Dict]:
-        """Получает список задач Jira по JQL запросу"""
-        data = {"jql": jql} if jql else {}
-        return await self.send_request("POST", "/jira/rest/api/2/search", data)
-    
-    async def get_jira_projects(self) -> Optional[Dict]:
-        """Получает список проектов Jira"""
-        return await self.send_request("GET", "/jira/rest/api/2/project")
-    
-    # Confluence методы
-    async def get_confluence_spaces(self) -> Optional[Dict]:
-        """Получает список пространств Confluence"""
-        return await self.send_request("GET", "/confluence/rest/api/space")
-    
-    async def get_confluence_pages(self, space_key: str) -> Optional[Dict]:
-        """Получает список страниц в пространстве Confluence"""
-        return await self.send_request("GET", f"/confluence/rest/api/content?spaceKey={space_key}")
-
-class ActiveDirectoryMCP(MCPServer):
-    """MCP сервер для Active Directory"""
-    
-    def __init__(self, server_config: Dict[str, Any]):
-        super().__init__("activedirectory", server_config)
-        self.domain = server_config.get("domain")
-        self.username = server_config.get("username")
-        self.password = server_config.get("password")
-    
-    async def get_users(self) -> Optional[Dict]:
-        """Получает список пользователей"""
-        return await self.send_request("GET", "/api/users")
-    
-    async def get_groups(self) -> Optional[Dict]:
-        """Получает список групп"""
-        return await self.send_request("GET", "/api/groups")
+        try:
+            request_data = {
+                "jsonrpc": "2.0",
+                "id": 1,
+                "method": "initialize",
+                "params": {
+                    "protocolVersion": "2024-11-05",
+                    "capabilities": {},
+                    "clientInfo": {
+                        "name": "ai-chat-client",
+                        "version": "1.0.0"
+                    }
+                }
+            }
+            
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                response = await client.post(
+                    f"{self.base_url}/",
+                    json=request_data,
+                    headers={"Content-Type": "application/json"}
+                )
+                
+                if response.status_code == 200:
+                    result = response.json()
+                    if "result" in result:
+                        return result["result"]
+                    else:
+                        return {}
+                else:
+                    return {}
+                    
+        except Exception as e:
+            return {}
 
 class MCPManager:
     """Менеджер для управления всеми MCP серверами"""
     
     def __init__(self):
-        self.servers = {}
-        self._initialize_servers()
+        self.clients = {}
+        self._initialize_clients()
     
-    def _initialize_servers(self):
-        """Инициализирует все MCP серверы"""
+    def _initialize_clients(self):
+        """Инициализирует все MCP клиенты"""
         mcp_config = config.get_mcp_config()
         
-        if config.is_mcp_enabled("gitlab"):
-            self.servers["gitlab"] = GitLabMCP(mcp_config["gitlab"])
-        
-        if config.is_mcp_enabled("atlassian"):
-            self.servers["atlassian"] = AtlassianMCP(mcp_config["atlassian"])
-        
-        if config.is_mcp_enabled("activedirectory"):
-            self.servers["activedirectory"] = ActiveDirectoryMCP(mcp_config["activedirectory"])
+        for server_name, server_config in mcp_config.items():
+            if server_config.get("enabled", False):
+                self.clients[server_name] = MCPClient(server_name, server_config)
     
     async def get_available_servers(self) -> List[str]:
         """Возвращает список доступных MCP серверов"""
         available = []
-        for name, server in self.servers.items():
-            if await server.is_available():
+        for name, client in self.clients.items():
+            if await client.is_available():
                 available.append(name)
         return available
     
-    async def execute_mcp_command(self, server_name: str, command: str, params: Dict[str, Any]) -> Optional[Dict]:
-        """Выполняет команду на указанном MCP сервере"""
-        if server_name not in self.servers:
+    async def call_tool(self, server_name: str, tool_name: str, arguments: Optional[Dict[str, Any]] = None) -> Optional[Dict]:
+        """Вызывает инструмент на указанном MCP сервере"""
+        if server_name not in self.clients:
             return {"error": f"MCP сервер {server_name} не найден"}
         
-        server = self.servers[server_name]
+        client = self.clients[server_name]
+        return await client.call_tool(tool_name, arguments)
+    
+    async def list_server_tools(self, server_name: str) -> Optional[List[Dict]]:
+        """Получает список инструментов указанного сервера"""
+        if server_name not in self.clients:
+            return []
         
-        if command == "get_projects":
-            if isinstance(server, GitLabMCP):
-                return await server.get_projects()
-        elif command == "get_issues":
-            if isinstance(server, GitLabMCP):
-                project_id = params.get("project_id")
-                return await server.get_issues(project_id)
-        elif command == "get_jira_projects":
-            if isinstance(server, AtlassianMCP):
-                return await server.get_jira_projects()
-        elif command == "get_jira_issues":
-            if isinstance(server, AtlassianMCP):
-                jql = params.get("jql", "")
-                return await server.get_jira_issues(jql)
-        elif command == "get_confluence_spaces":
-            if isinstance(server, AtlassianMCP):
-                return await server.get_confluence_spaces()
-        elif command == "get_confluence_pages":
-            if isinstance(server, AtlassianMCP):
-                space_key = params.get("space_key")
-                return await server.get_confluence_pages(space_key)
-        elif command == "get_users":
-            if isinstance(server, ActiveDirectoryMCP):
-                return await server.get_users()
-        elif command == "get_groups":
-            if isinstance(server, ActiveDirectoryMCP):
-                return await server.get_groups()
+        client = self.clients[server_name]
+        return await client.list_tools()
+    
+    async def get_server_info(self, server_name: str) -> Optional[Dict]:
+        """Получает информацию о сервере"""
+        if server_name not in self.clients:
+            return {}
         
-        return {"error": f"Команда {command} не поддерживается сервером {server_name}"}
+        client = self.clients[server_name]
+        return await client.get_server_info()
+    
+    async def get_all_tools(self) -> Dict[str, List[Dict]]:
+        """Получает список всех инструментов всех серверов"""
+        all_tools = {}
+        for server_name in self.clients.keys():
+            tools = await self.list_server_tools(server_name)
+            if tools:
+                all_tools[server_name] = tools
+        return all_tools
 
 # Глобальный экземпляр менеджера MCP
 mcp_manager = MCPManager()
