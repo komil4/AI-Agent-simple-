@@ -23,15 +23,27 @@ class MCPClient:
         
         try:
             async with aiohttp.ClientSession() as session:
-                async with session.get(f"{self.url}/health", timeout=5.0) as response:
-                    return response.status == 200
-        except:
-            try:
-                async with aiohttp.ClientSession() as session:
-                    async with session.get(f"{self.url}/", timeout=5.0) as response:
-                        return True
-            except:
+                # Пробуем разные endpoints для проверки доступности
+                endpoints_to_try = [
+                    f"{self.url}/mcp/health",
+                    f"{self.url}/health", 
+                    f"{self.url}/mcp",
+                    f"{self.url}/"
+                ]
+                
+                for endpoint in endpoints_to_try:
+                    try:
+                        async with session.get(endpoint, timeout=5.0) as response:
+                            if response.status == 200:
+                                return True
+                            elif response.status == 406:  # Not Acceptable - сервер работает, но нужны другие заголовки
+                                return True
+                    except:
+                        continue
+                
                 return False
+        except:
+            return False
     
     async def send_request(self, method: str, params: Dict[str, Any] = None) -> Dict[str, Any]:
         """Отправка запроса к MCP серверу"""
@@ -47,12 +59,29 @@ class MCPClient:
                     "params": params or {}
                 }
                 
-                async with session.post(
+                # Пробуем разные endpoints для MCP запросов
+                endpoints_to_try = [
+                    f"{self.url}/mcp",
                     f"{self.url}/",
-                    json=payload,
-                    headers={"Content-Type": "application/json"}
-                ) as response:
-                    return await response.json()
+                    f"{self.url}/mcp/"
+                ]
+                
+                for endpoint in endpoints_to_try:
+                    try:
+                        async with session.post(
+                            endpoint,
+                            json=payload,
+                            headers={"Content-Type": "application/json"}
+                        ) as response:
+                            if response.status == 200:
+                                return await response.json()
+                            elif response.status == 406:
+                                # Сервер работает, но нужны другие заголовки - попробуем следующий endpoint
+                                continue
+                    except:
+                        continue
+                
+                return {"error": f"Не удалось подключиться к {self.name}"}
         except Exception as e:
             return {"error": f"Ошибка подключения к {self.name}: {str(e)}"}
 
