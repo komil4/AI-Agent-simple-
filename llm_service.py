@@ -61,12 +61,6 @@ class LLMService:
         # Получаем информацию о всех доступных инструментах
         all_tools = await mcp_manager.get_all_tools()
         
-        # Получаем информацию о серверах
-        server_info = {}
-        for server_name in available_servers:
-            info = await mcp_manager.get_server_info(server_name)
-            server_info[server_name] = info
-        
         # Анализируем сообщение на предмет запросов к MCP серверам
         mcp_requests = await self._analyze_message_with_llm(user_message, all_tools)
         
@@ -81,7 +75,6 @@ class LLMService:
         # Формируем контекст для LLM
         mcp_context = {
             "available_servers": available_servers,
-            "server_info": server_info,
             "available_tools": all_tools,
             "tools_summary": self._create_tools_summary(all_tools),
             "mcp_results": mcp_results

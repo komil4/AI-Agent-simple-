@@ -179,36 +179,11 @@ class MCPManager:
         client = self.clients[server_name]
         result = await client.list_tools()
         
-        # Извлекаем список инструментов из JSON-RPC ответа
-        if "result" in result and "tools" in result["result"]:
-            return result["result"]["tools"]
-        else:
-            return []
-    
-    async def get_server_info(self, server_name: str) -> Optional[Dict]:
-        """Получает информацию о сервере"""
-        await self.initialize()
-        
-        if server_name not in self.clients:
-            return {}
-        
-        client = self.clients[server_name]
-        try:
-            # Получаем информацию от сервера
-            server_info = await client.get_server_info()
-            if "error" not in server_info:
-                return server_info
-            
-            # Fallback к базовой информации
-            return {
-                "name": client.name,
-                "url": client.url,
-                "enabled": client.enabled,
-                "initialized": client._initialized
-            }
-        except Exception as e:
-            return {"error": f"Ошибка получения информации о сервере {server_name}: {str(e)}"}
-    
+        # Возвращается массив объектов Tool
+        tools = []
+        for tool in result:
+            tools.append(tool)
+        return tools
     
     async def get_all_tools(self) -> Dict[str, List[Dict]]:
         """Получает список всех инструментов всех серверов"""
