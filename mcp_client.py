@@ -21,15 +21,6 @@ class MCPClient:
         self._resources_cache_time = 0
         self._cache_ttl = 300  # 5 минут
     
-    async def _with_client(self, operation):
-        """Выполняет операцию с MCP клиентом"""
-        try:
-            async with Client(self.name) as mcp:
-                await mcp.connect(self.url)
-                return await operation(mcp)
-        except Exception as e:
-            return {"error": f"Ошибка подключения к {self.name}: {str(e)}"}
-    
     async def ensure_initialized(self):
         """Убеждается, что клиент инициализирован"""
         if not self._initialized:
@@ -43,21 +34,19 @@ class MCPClient:
                 return self._tools_cache
             
             # Получаем данные
-            result = await self._with_client(lambda mcp: mcp.list_tools())
-            
-            # Кэшируем результат
-            if "error" not in result:
+            async with Client(self.url) as mcp:
+                result = await mcp.list_tools()
                 self._tools_cache = result
                 self._cache_time = time.time()
-            
-            return result
+                return result
         except Exception as e:
             return {"error": f"Ошибка получения инструментов {self.name}: {str(e)}"}
     
     async def call_tool(self, tool_name: str, arguments: Dict[str, Any]):
         """Вызов инструмента"""
         try:
-            return await self._with_client(lambda mcp: mcp.tools.call(tool_name, arguments))
+            async with Client(self.url) as mcp:
+                return await mcp.call_tool(tool_name, arguments)
         except Exception as e:
             return {"error": f"Ошибка вызова инструмента {tool_name} на {self.name}: {str(e)}"}
     
@@ -69,21 +58,19 @@ class MCPClient:
                 return self._resources_cache
             
             # Получаем данные
-            result = await self._with_client(lambda mcp: mcp.list_resources())
-            
-            # Кэшируем результат
-            if "error" not in result:
+            async with Client(self.url) as mcp:
+                result = await mcp.list_resources()
                 self._resources_cache = result
                 self._resources_cache_time = time.time()
-            
-            return result
+                return result
         except Exception as e:
             return {"error": f"Ошибка получения ресурсов {self.name}: {str(e)}"}
     
     async def read_resource(self, uri: str):
         """Чтение ресурса"""
         try:
-            return await self._with_client(lambda mcp: mcp.read_resource(uri))
+            async with Client(self.url) as mcp:
+                return await mcp.read_resource(uri)
         except Exception as e:
             return {"error": f"Ошибка чтения ресурса {uri} на {self.name}: {str(e)}"}
     
@@ -95,9 +82,9 @@ class MCPClient:
         
         try:
             # Проверяем подключение
-            result = await self._with_client(lambda mcp: {"status": "connected"})
-            self._initialized = "error" not in result
-            return self._initialized
+            async with Client(self.url) as mcp:
+                self._initialized = mcp.is_connected()
+                return self._initialized
         except Exception as e:
             self._initialized = False
             return False
@@ -108,30 +95,33 @@ class MCPClient:
             return False
         
         try:
-            result = await self._with_client(lambda mcp: {"status": "available"})
-            return "error" not in result
+            async with Client(self.url) as mcp:
+                return mcp.is_connected()
         except:
             return False
     
     async def get_server_info(self):
         """Получение информации о сервере"""
         try:
-            return await self._with_client(lambda mcp: mcp.get_server_info())
+            async with Client(self.name) as mcp:
+                await mcp.connect(self.url)
+                return await mcp.get_server_info()
         except Exception as e:
             return {"error": f"Ошибка получения информации о сервере {self.name}: {str(e)}"}
     
     async def get_capabilities(self):
         """Получение возможностей сервера"""
         try:
-            return await self._with_client(lambda mcp: mcp.get_capabilities())
+            async with Client(self.url) as mcp:
+                return await mcp.get_capabilities()
         except Exception as e:
             return {"error": f"Ошибка получения возможностей сервера {self.name}: {str(e)}"}
     
     async def ping(self):
         """Проверка связи с сервером"""
         try:
-            result = await self._with_client(lambda mcp: {"status": "pong", "timestamp": time.time()})
-            return result
+            async with Client(self.url) as mcp:
+                return {"status": "pong", "timestamp": time.time()}
         except Exception as e:
             return {"error": f"Ошибка ping сервера {self.name}: {str(e)}"}
     
