@@ -11,6 +11,7 @@ services:
       - GITLAB_TOKEN=${GITLAB_TOKEN}
       - GITLAB_URL=${GITLAB_URL}
     restart: unless-stopped
+    command: ["gitlab-mcp", "--http_port", "3000"]
     networks:
       - mcp-network
 
@@ -19,7 +20,7 @@ services:
     image: atlassian-mcp-server:latest
     container_name: atlassian-mcp
     ports:
-      - "3002:3000"
+      - "3002:9000"
     environment:
         - JIRA_API_TOKEN=${JIRA_API_TOKEN}
         - JIRA_PERSONAL_TOKEN=${JIRA_PERSONAL_TOKEN}
@@ -29,6 +30,7 @@ services:
         - CONFLUENCE_USERNAME=${CONFLUENCE_USERNAME}
         - CONFLUENCE_URL=${CONFLUENCE_URL}
         - CONFLUENCE_PERSONAL_TOKEN=${CONFLUENCE_PERSONAL_TOKEN}
+    command: ["--transport", "streamable-http", "--port", "9000", "-vv"]
     restart: unless-stopped
     networks:
       - mcp-network
