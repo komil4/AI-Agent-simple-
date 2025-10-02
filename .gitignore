@@ -1,5 +1,6 @@
 # Configuration files with sensitive data
 config.json
+docker-compose.yml
 
 # Python
 __pycache__/
