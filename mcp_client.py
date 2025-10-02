@@ -19,7 +19,8 @@ class MCPClient:
         self._cache_time = 0
         self._resources_cache = None
         self._resources_cache_time = 0
-        self._cache_ttl = 300  # 5 минут
+        self._cache_ttl = 300
+        self.client = Client(self.url)
     
     async def ensure_initialized(self):
         """Убеждается, что клиент инициализирован"""
@@ -34,8 +35,8 @@ class MCPClient:
                 return self._tools_cache
             
             # Получаем данные
-            async with Client(self.url) as mcp:
-                result = await mcp.list_tools()
+            async with self.client:
+                result = await self.client.list_tools()
                 self._tools_cache = result
                 self._cache_time = time.time()
                 return result
@@ -45,8 +46,8 @@ class MCPClient:
     async def call_tool(self, tool_name: str, arguments: Dict[str, Any]):
         """Вызов инструмента"""
         try:
-            async with Client(self.url) as mcp:
-                return await mcp.call_tool(tool_name, arguments)
+            async with self.client:
+                return await self.client.call_tool(tool_name, arguments)
         except Exception as e:
             return {"error": f"Ошибка вызова инструмента {tool_name} на {self.name}: {str(e)}"}
     
@@ -58,21 +59,13 @@ class MCPClient:
                 return self._resources_cache
             
             # Получаем данные
-            async with Client(self.url) as mcp:
-                result = await mcp.list_resources()
+            async with self.client:
+                result = await self.client.list_resources()
                 self._resources_cache = result
                 self._resources_cache_time = time.time()
                 return result
         except Exception as e:
             return {"error": f"Ошибка получения ресурсов {self.name}: {str(e)}"}
-    
-    async def read_resource(self, uri: str):
-        """Чтение ресурса"""
-        try:
-            async with Client(self.url) as mcp:
-                return await mcp.read_resource(uri)
-        except Exception as e:
-            return {"error": f"Ошибка чтения ресурса {uri} на {self.name}: {str(e)}"}
     
     async def initialize(self):
         """Инициализация MCP клиента - проверяет возможность подключения"""
@@ -82,8 +75,8 @@ class MCPClient:
         
         try:
             # Проверяем подключение
-            async with Client(self.url) as mcp:
-                self._initialized = mcp.is_connected()
+            async with self.client:
+                self._initialized = self.client.is_connected()
                 return self._initialized
         except Exception as e:
             self._initialized = False
@@ -95,35 +88,10 @@ class MCPClient:
             return False
         
         try:
-            async with Client(self.url) as mcp:
-                return mcp.is_connected()
+            async with self.client:
+                return self.client.is_connected()
         except:
-            return False
-    
-    async def get_server_info(self):
-        """Получение информации о сервере"""
-        try:
-            async with Client(self.name) as mcp:
-                await mcp.connect(self.url)
-                return await mcp.get_server_info()
-        except Exception as e:
-            return {"error": f"Ошибка получения информации о сервере {self.name}: {str(e)}"}
-    
-    async def get_capabilities(self):
-        """Получение возможностей сервера"""
-        try:
-            async with Client(self.url) as mcp:
-                return await mcp.get_capabilities()
-        except Exception as e:
-            return {"error": f"Ошибка получения возможностей сервера {self.name}: {str(e)}"}
-    
-    async def ping(self):
-        """Проверка связи с сервером"""
-        try:
-            async with Client(self.url) as mcp:
-                return {"status": "pong", "timestamp": time.time()}
-        except Exception as e:
-            return {"error": f"Ошибка ping сервера {self.name}: {str(e)}"}
+            return False 
     
     async def get_cache_stats(self):
         """Получение статистики кэша"""
@@ -241,45 +209,6 @@ class MCPManager:
         except Exception as e:
             return {"error": f"Ошибка получения информации о сервере {server_name}: {str(e)}"}
     
-    async def ping_server(self, server_name: str) -> Dict[str, Any]:
-        """Проверка связи с сервером"""
-        await self.initialize()
-        
-        if server_name not in self.clients:
-            return {"error": f"MCP сервер {server_name} не найден"}
-        
-        client = self.clients[server_name]
-        return await client.ping()
-    
-    async def get_server_capabilities(self, server_name: str) -> Dict[str, Any]:
-        """Получение возможностей сервера"""
-        await self.initialize()
-        
-        if server_name not in self.clients:
-            return {"error": f"MCP сервер {server_name} не найден"}
-        
-        client = self.clients[server_name]
-        return await client.get_capabilities()
-    
-    async def get_cache_stats(self) -> Dict[str, Any]:
-        """Получение статистики кэша всех серверов"""
-        await self.initialize()
-        
-        stats = {}
-        for server_name, client in self.clients.items():
-            stats[server_name] = await client.get_cache_stats()
-        
-        return stats
-    
-    async def clear_all_caches(self) -> Dict[str, Any]:
-        """Очистка кэшей всех серверов"""
-        await self.initialize()
-        
-        results = {}
-        for server_name, client in self.clients.items():
-            results[server_name] = await client.clear_cache()
-        
-        return results
     
     async def get_all_tools(self) -> Dict[str, List[Dict]]:
         """Получает список всех инструментов всех серверов"""
@@ -292,64 +221,6 @@ class MCPManager:
                 all_tools[server_name] = tools
         return all_tools
     
-    async def get_system_stats(self) -> Dict[str, Any]:
-        """Получение общей статистики системы"""
-        await self.initialize()
-        
-        stats = {
-            "total_servers": len(self.clients),
-            "enabled_servers": sum(1 for client in self.clients.values() if client.enabled),
-            "available_servers": 0,
-            "servers": {}
-        }
-        
-        for server_name, client in self.clients.items():
-            is_available = await client.is_available()
-            if is_available:
-                stats["available_servers"] += 1
-            
-            stats["servers"][server_name] = {
-                "enabled": client.enabled,
-                "available": is_available,
-                "initialized": client._initialized,
-                "url": client.url
-            }
-        
-        return stats
-    
-    async def health_check(self) -> Dict[str, Any]:
-        """Проверка здоровья всех серверов"""
-        await self.initialize()
-        
-        health_status = {
-            "overall": "healthy",
-            "servers": {},
-            "issues": []
-        }
-        
-        for server_name, client in self.clients.items():
-            if not client.enabled:
-                health_status["servers"][server_name] = "disabled"
-                continue
-            
-            try:
-                is_available = await client.is_available()
-                if is_available:
-                    health_status["servers"][server_name] = "healthy"
-                else:
-                    health_status["servers"][server_name] = "unavailable"
-                    health_status["issues"].append(f"Сервер {server_name} недоступен")
-            except Exception as e:
-                health_status["servers"][server_name] = "error"
-                health_status["issues"].append(f"Ошибка проверки сервера {server_name}: {str(e)}")
-        
-        # Определяем общий статус
-        if health_status["issues"]:
-            health_status["overall"] = "unhealthy"
-        elif not any(status == "healthy" for status in health_status["servers"].values()):
-            health_status["overall"] = "no_servers"
-        
-        return health_status
     
     async def close_all(self):
         """Закрывает все соединения"""
