@@ -33,12 +33,27 @@ class LLMService:
             for server_name, server_tools in mcp_context["available_tools"].items():
                 for tool in server_tools:
                     # Преобразуем инструмент MCP в формат OpenAI
+                    tool_name = getattr(tool, 'name', 'unknown')
+                    tool_description = getattr(tool, 'description', '')
+                    tool_schema = getattr(tool, 'inputSchema', {})
+                    
+                    # Приводим схему к правильному формату OpenAI
+                    if not isinstance(tool_schema, dict):
+                        tool_schema = {}
+                    
+                    # Убеждаемся, что parameters имеет правильную структуру
+                    parameters = {
+                        "type": "object",
+                        "properties": tool_schema.get("properties", {}),
+                        "required": tool_schema.get("required", [])
+                    }
+                    
                     openai_tool = {
                         "type": "function",
                         "function": {
-                            "name": f"{server_name}_{getattr(tool, 'name', 'unknown')}",
-                            "description": getattr(tool, 'description', ''),
-                            "parameters": getattr(tool, 'inputSchema', {})
+                            "name": f"{server_name}_{tool_name}",
+                            "description": tool_description,
+                            "parameters": parameters
                         }
                     }
                     tools.append(openai_tool)
