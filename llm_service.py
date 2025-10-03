@@ -36,9 +36,9 @@ class LLMService:
                     openai_tool = {
                         "type": "function",
                         "function": {
-                            "name": f"{server_name}_{tool.get('name', 'unknown')}",
-                            "description": tool.get('description', ''),
-                            "parameters": tool.get('inputSchema', {})
+                            "name": f"{server_name}_{getattr(tool, 'name', 'unknown')}",
+                            "description": getattr(tool, 'description', ''),
+                            "parameters": getattr(tool, 'inputSchema', {})
                         }
                     }
                     tools.append(openai_tool)
@@ -113,6 +113,62 @@ class LLMService:
                 )
                 
                 return final_response.choices[0].message.content
+
+            # Иногда LLM возвращает не tool call, а json-строку с вызовом инструмента
+            # Пример: ["gitlab_gitlab_search(action='global', query='ONEC-8927', scope='issues')"]
+            try:
+                content = message.content
+                # Проверяем, является ли content JSON-массивом с вызовами
+                parsed = json.loads(content)
+                if isinstance(parsed, list):
+                    tool_results = []
+                    for call_str in parsed:
+                        # Пример строки: "gitlab_gitlab_search(action='global', query='ONEC-8927', scope='issues')"
+                        # Парсим имя инструмента и аргументы
+                        if '(' in call_str and call_str.endswith(')'):
+                            tool_name, args_str = call_str.split('(', 1)
+                            args_str = args_str[:-1]  # remove trailing ')'
+                            # Преобразуем строку аргументов в словарь
+                            # Преобразуем аргументы вида: action='global', query='ONEC-8927', scope='issues'
+                            args = {}
+                            for arg in args_str.split(','):
+                                if '=' in arg:
+                                    k, v = arg.split('=', 1)
+                                    k = k.strip()
+                                    v = v.strip().strip("'").strip('"')
+                                    args[k] = v
+                            if '_' in tool_name:
+                                server_name, actual_tool_name = tool_name.split('_', 1)
+                                result = await mcp_manager.call_tool(server_name, actual_tool_name, args)
+                                tool_results.append({
+                                    "tool_call_id": None,
+                                    "name": tool_name,
+                                    "result": result
+                                })
+                    # Добавляем результаты инструментов в контекст
+                    llm_messages.append({
+                        "role": "assistant",
+                        "content": message.content
+                    })
+                    for tool_result in tool_results:
+                        llm_messages.append({
+                            "role": "tool",
+                            "tool_call_id": tool_result["tool_call_id"],
+                            "name": tool_result["name"],
+                            "content": json.dumps(tool_result["result"], ensure_ascii=False)
+                        })
+                    # Получаем финальный ответ
+                    final_response = await self.client.chat.completions.create(
+                        model=self.model,
+                        messages=llm_messages,
+                        temperature=self.temperature,
+                        max_tokens=self.max_tokens
+                    )
+                    return final_response.choices[0].message.content
+            except Exception:
+                pass  # Если не удалось распарсить как json, просто возвращаем content
+
+            return message.content
             
             return message.content
         except Exception as e:
@@ -162,8 +218,8 @@ class LLMService:
         for server_name, tools in all_tools.items():
             summary += f"\n{server_name}:\n"
             for tool in tools:
-                name = tool.get("name", "")
-                description = tool.get("description", "")
+                name = getattr(tool, "name", "")
+                description = getattr(tool, "description", "")
                 summary += f"  - {name}: {description}\n"
         
         return summary
