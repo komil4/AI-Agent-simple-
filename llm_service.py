@@ -42,9 +42,22 @@ class LLMService:
                         tool_schema = {}
                     
                     # Убеждаемся, что parameters имеет правильную структуру
+                    # Обрабатываем properties - оставляем только type для каждого свойства
+                    processed_properties = {}
+                    original_properties = tool_schema.get("properties", {})
+                    for prop_name, prop_info in original_properties.items():
+                        if isinstance(prop_info, dict):
+                            # Извлекаем только type из описания свойства
+                            processed_properties[prop_name] = {
+                                "type": prop_info.get("type", "string")
+                            }
+                        else:
+                            # Если prop_info не словарь, используем строку по умолчанию
+                            processed_properties[prop_name] = {"type": "string"}
+                    
                     parameters = {
                         "type": "object",
-                        "properties": tool_schema.get("properties", {}),
+                        "properties": processed_properties,
                         "required": tool_schema.get("required", [])
                     }
                     
